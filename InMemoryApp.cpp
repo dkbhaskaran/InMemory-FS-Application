@@ -14,62 +14,11 @@
 #include "llvm/Support/TargetRegistry.h"
 #include <llvm/Support/TargetSelect.h>
 
-#include <time.h>
+#include "Perf.h"
 
-using namespace std;
 using namespace clang;
 using namespace clang::driver;
 using namespace llvm::vfs;
-
-using namespace std::chrono;
-
-struct Profile {
-  std::string Tag;
-  bool isUsed = false;
-  struct timespec StartTime;
-  double TotalDuration = 0.0;
-  int Calls = 0;
-  double PCFreq = 1.0;
-
-  Profile(const std::string Name = "") : Tag(Name) {
-    struct timespec Res;
-    if (clock_getres(CLOCK_MONOTONIC_RAW, &Res)) {
-      std::cerr << "Failed to get performance frequency\n";
-      exit(1);
-    }
-
-    PCFreq = (Res.tv_sec * 1e9 + Res.tv_nsec) * 1e3;
-  }
-
-  void Start() {
-    isUsed = true;
-    if (clock_gettime(CLOCK_MONOTONIC_RAW, &StartTime)) {
-      std::cerr << "Failed to get time\n";
-      exit(1);
-    }
-
-  }
-
-  void Stop() {
-    struct timespec EndTime;
-    if (clock_gettime(CLOCK_MONOTONIC_RAW, &EndTime)) {
-      std::cerr << "Failed to get time\n";
-      exit(1);
-    }
-
-    double S = StartTime.tv_sec * 1e9 + StartTime.tv_nsec;
-    double E = EndTime.tv_sec * 1e9 + EndTime.tv_nsec;
-    TotalDuration += (E-S)/PCFreq;
-
-    Calls++;
-  }
-
-  ~Profile() {
-    if (isUsed)
-      std::cout << Tag << " took " << TotalDuration / Calls << " us per call"
-                << std::endl;
-  }
-};
 
 void setArgsForCompileBC(SmallVector<const char *, 128> &Argv, const char *Source,
     const char *output) {
