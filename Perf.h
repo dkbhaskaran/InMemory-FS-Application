@@ -19,6 +19,7 @@ struct ProfileImpl {
       std::cerr << "Failed to get performance frequency\n";
       exit(1);
     }
+    PCFreq = li.QuadPart / 1e6;
   }
 
   double getTime() {
