@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 
 #include <clang/Driver/Compilation.h>
 #include <clang/Driver/Driver.h>
@@ -8,6 +9,7 @@
 #include <clang/FrontendTool/Utils.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Host.h>
+#include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/Program.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/VirtualFileSystem.h>
@@ -20,11 +22,11 @@ using namespace clang::driver;
 using namespace llvm::vfs;
 
 // TODO pass as a command line argument
-#ifdef UNIX
+#if defined(__unix__)
 #define CLANG_PATH                                                             \
   "/home/dbhaskar/dockerx/git/amd-stg-open/lightning/build/compiler/"          \
   "llvm-project/bin/clang++"
-#else 
+#else
 #define CLANG_PATH "C:\\code\\llvm-project\\build\\bin\\clang++"
 #endif
 
@@ -44,7 +46,7 @@ public:
   ProxyFS() : FileSystemAdaptor() {}
 };
 
-// #define UPSTREAM_PATCH
+#define UPSTREAM_PATCH
 // #define IN_HOUSE_PATCH
 
 #ifdef IN_HOUSE_PATCH
@@ -115,9 +117,6 @@ public:
     SmallVector<const char *, 16> Args;
     Args.clear();
     Args.push_back("-cc1");
-#ifdef UNIX
-    Args.push_back("-emit-obj");
-#endif
     Args.push_back("-o");
     Args.push_back(Output);
     Args.push_back("-c");
@@ -157,7 +156,7 @@ private:
 
     Argv.clear();
     for (const auto &Arg : Cmd->getArguments()) {
-      //std::cout << Arg << "\n";
+      // std::cout << Arg << "\n";
       Argv.push_back(Arg);
     }
   }
@@ -204,6 +203,23 @@ private:
   std::unique_ptr<FileSystemAdaptor> VFS;
 };
 
+#if defined(UPSTREAM_PATCH) || defined(IN_HOUSE_PATCH)
+static void DumpFile(IntrusiveRefCntPtr<InMemoryFileSystem> FS,
+                     const char *Source, const char *Output) {
+  llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> BufferOrErr =
+      FS->getBufferForFile(Source);
+  if (!BufferOrErr) {
+    std::cerr << "getBufferForFile failed\n";
+    exit(1);
+  }
+  llvm::MemoryBuffer &Buffer = *BufferOrErr.get();
+
+  std::ofstream DumpFile(Output, std::ios::out | std::ios::binary);
+  DumpFile.write(Buffer.getBufferStart(), Buffer.getBufferSize());
+  DumpFile.close();
+}
+#endif
+
 int main(int argc, char **argv) {
   llvm::InitializeAllTargetInfos();
   llvm::InitializeAllTargetMCs();
@@ -225,7 +241,12 @@ int main(int argc, char **argv) {
         llvm::makeIntrusiveRefCnt<InMemoryFileSystem>();
     TestCompilerInvocation T2(std::make_unique<InMemoryFS>(IMFS));
     T2.EmitBC("test.cpp", "test.bc", P3);
-    T2.CompileBC("/test.bc", "/test.o", P4);
+    T2.CompileBC("test.bc", "test.o", P4);
+
+    if (i == 0) {
+      DumpFile(IMFS, "test.bc", "dump.bc");
+      DumpFile(IMFS, "test.o", "dump.o");
+    }
   }
 #endif
 
