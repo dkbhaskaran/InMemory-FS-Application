@@ -20,9 +20,13 @@ using namespace clang::driver;
 using namespace llvm::vfs;
 
 // TODO pass as a command line argument
+#ifdef UNIX
 #define CLANG_PATH                                                             \
   "/home/dbhaskar/dockerx/git/amd-stg-open/lightning/build/compiler/"          \
   "llvm-project/bin/clang++"
+#else 
+#define CLANG_PATH "C:\\code\\llvm-project\\build\\bin\\clang++"
+#endif
 
 class FileSystemAdaptor {
 public:
@@ -111,7 +115,9 @@ public:
     SmallVector<const char *, 16> Args;
     Args.clear();
     Args.push_back("-cc1");
+#ifdef UNIX
     Args.push_back("-emit-obj");
+#endif
     Args.push_back("-o");
     Args.push_back(Output);
     Args.push_back("-c");
@@ -151,7 +157,7 @@ private:
 
     Argv.clear();
     for (const auto &Arg : Cmd->getArguments()) {
-      std::cout << Arg << "\n";
+      //std::cout << Arg << "\n";
       Argv.push_back(Arg);
     }
   }
